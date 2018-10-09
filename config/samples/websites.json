@@ -1,0 +1,17 @@
+[
+  {
+    "name": "My Website - redirect to www.mywebsite.com",
+    "url": "http://mywebsite.com",
+    "statusCode": 200,
+    "maxResponseTimeMS": 500,
+    "responseHeaders": {
+      "Location": "https://www.mywebsite.com/"
+    }
+  },
+  {
+    "name": "My Website - loads within reasonable amount of time",
+    "url": "http://www.mywebsite.com",
+    "statusCode": 200,
+    "maxResponseTimeMS": 500
+  }
+]

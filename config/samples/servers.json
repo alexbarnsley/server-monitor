@@ -1,0 +1,16 @@
+[
+	{
+		"name": "Localhost",
+    "host": "127.0.0.1",
+    "port": 22,
+    "username": "monitor",
+    "password": "monitor",
+    "groups": [
+      "generic",
+      "apache",
+      "mysql"
+    ],
+    "checks": [],
+    "alerts": {}
+	}
+]

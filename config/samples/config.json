@@ -1,0 +1,10 @@
+{
+  "checkInterval": 5,
+  "alerts": {
+    "simplePush": {
+      "code": "123456",
+      "enabled": true,
+      "default": true
+    }
+  }
+}
