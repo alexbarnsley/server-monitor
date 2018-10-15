@@ -2,16 +2,22 @@
   {
     "name": "My Website - redirect to www.mywebsite.com",
     "url": "http://mywebsite.com",
+    "enabled": true,
     "statusCode": 200,
     "maxResponseTimeMS": 500,
     "responseHeaders": {
       "Location": "https://www.mywebsite.com/"
-    }
+    },
+    "severity": "CRITICAL",
+    "alerts": {}
   },
   {
     "name": "My Website - loads within reasonable amount of time",
     "url": "http://www.mywebsite.com",
+    "enabled": true,
     "statusCode": 200,
-    "maxResponseTimeMS": 500
+    "maxResponseTimeMS": 500,
+    "severity": "CRITICAL",
+    "alerts": {}
   }
 ]

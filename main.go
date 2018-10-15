@@ -10,36 +10,45 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-func connectToServers() {
-	for i := 0; i < len(servers); i++ {
-		server := &servers[i]
-		session, err := sshConnect(server)
-		if err != nil {
-			Error("Failed to connect to '", server.Name, "': ", err.Error())
-		}
-		servers[i].Session = session
+func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject string, message string) {
+	var server *ServerConfig
+	var website *WebsiteConfig
+	if serverResult != nil {
+		server = serverResult.Server
 	}
-}
-
-func disconnectAllServers() {
-	if len(servers) > 0 {
-		for i := 0; i < len(servers); i++ {
-			err := servers[i].Session.client.Close()
-			if err != nil {
-				Error("Could not close SSH session for '", servers[i].Name, "': ", err.Error())
-			}
-		}
+	if websiteResult != nil {
+		website = websiteResult.Website
 	}
-}
-
-func SendAlerts(serverResult *ServerCheck, subject string, message string) {
-	server := serverResult.Server
-	isSevere := serverResult != nil && serverResult.IsSevere()
-	if !isSevere || (isSevere && !serverResult.CanResendAlert()) {
+	severityName := ""
+	isSevere := false
+	canSend := map[string]bool{
+		"simplePush": false,
+	}
+	if serverResult != nil && server != nil {
+		isSevere = serverResult != nil && serverResult.IsSevere()
+		if isSevere && !serverResult.CanResendAlert() {
+			return
+		}
+		if server.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
+			canSend["simplePush"] = true
+		}
+		severityName = serverResult.GetSeverityName()
+	}
+	if websiteResult != nil && website != nil {
+		isSevere = websiteResult != nil && websiteResult.IsSevere()
+		if isSevere && !websiteResult.CanResendAlert() {
+			return
+		}
+		if website.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
+			canSend["simplePush"] = true
+		}
+		severityName = websiteResult.GetSeverityName()
+	}
+	if !isSevere {
 		return
 	}
-	Error(fmt.Sprintf("%v ALERT - %v", serverResult.GetSeverityName(), subject))
-	if config.Alerts.SimplePush.Enabled && server.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
+	Error(fmt.Sprintf("%v ALERT - %v", severityName, subject))
+	if config.Alerts.SimplePush.Enabled && canSend["canSend"] {
 		AlertSimplePush(subject, message)
 	}
 	// if config.Alerts.SimplePush.Enabled {
@@ -55,12 +64,20 @@ func SendAlerts(serverResult *ServerCheck, subject string, message string) {
 	// 	AlertSMS(subject, message)
 	// }
 
-	alert := &Alert{
-		AlertId: serverResult.GetTestId(),
+	var alert *Alert = &Alert{}
+	if serverResult != nil {
+		alert.AlertId = serverResult.GetTestId()
 	}
-	err := alert.Save()
-	if err != nil {
-		Error("Could not save alert: ", err)
+	if websiteResult != nil {
+		alert.AlertId = websiteResult.GetTestId()
+	}
+	if alert.AlertId == "" {
+		Error("Could not save alert - no id set")
+	} else {
+		err := alert.Save()
+		if err != nil {
+			Error("Could not save alert: ", err)
+		}
 	}
 }
 
@@ -93,14 +110,14 @@ func runServerChecks(server *ServerConfig) {
 		if err != nil {
 			checkResult.Passed = false
 			postCheck = func() {
-				go SendAlerts(checkResult, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("Failed to run check '%s': %s", check.Name, err.Error()))
+				go SendAlerts(checkResult, nil, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("Failed to run check '%s': %s", check.Name, err.Error()))
 			}
 			continue
 		} else if check.ResponseContains != "" {
 			if !strings.Contains(response.String(), check.ResponseContains) {
 				checkResult.Passed = false
 				postCheck = func() {
-					go SendAlerts(checkResult, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("'%s' failed with response: %s", check.Name, response.String()))
+					go SendAlerts(checkResult, nil, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("'%s' failed with response: %s", check.Name, response.String()))
 				}
 				continue
 			}
@@ -137,7 +154,7 @@ func runServerChecks(server *ServerConfig) {
 						}
 					}
 					postCheck = func() {
-						go SendAlerts(checkResult, fmt.Sprintf("%s (%s)", server.Name, check.Name), strings.Join(finalErrors, ", "))
+						go SendAlerts(checkResult, nil, fmt.Sprintf("%s (%s)", server.Name, check.Name), strings.Join(finalErrors, ", "))
 					}
 				}
 			}
@@ -152,7 +169,7 @@ func runServerChecks(server *ServerConfig) {
 		}
 		err = checkResult.Save()
 		if err != nil {
-			Error("Could not save result: ", err)
+			Error("Could not save server result: ", err)
 		}
 	}
 
@@ -175,8 +192,13 @@ func runWebsiteChecks(website *WebsiteConfig) {
 		response, responseError = request.Post(website.Url)
 	}
 
+	checkResult := &WebsiteCheck{
+		Website: website,
+		Passed:  true,
+	}
 	errors := make([]string, 0)
 	fail := func(text string, parts ...interface{}) {
+		checkResult.Passed = false
 		errors = append(errors, fmt.Sprintf(text, parts...))
 	}
 
@@ -205,13 +227,18 @@ func runWebsiteChecks(website *WebsiteConfig) {
 		}
 	}
 
-	if len(errors) == 0 {
+	if checkResult.Passed {
 		Info("Website test '", website.Name, "' passed")
 	} else {
+		go SendAlerts(nil, checkResult, fmt.Sprintf("%s failed", website.Name), strings.Join(errors, ", "))
 		Error("Website test '", website.Name, "' failed with the following errors: ")
 		for _, err := range errors {
 			Error("  - ", err)
 		}
+	}
+	err := checkResult.Save()
+	if err != nil {
+		Error("Could not save server result: ", err)
 	}
 
 	website.inProgress = false
@@ -247,11 +274,15 @@ func main() {
 		}
 		for i := 0; i < len(servers); i++ {
 			server := &servers[i]
+			if !server.Enabled {
+				continue
+			}
+
 			if server.Session == nil {
 				SendAlerts(&ServerCheck{
 					Server: server,
 					Passed: false,
-				}, "Server not connected", "Server not connected, cannot run checks")
+				}, nil, "Server not connected", "Server not connected, cannot run checks")
 				continue
 			}
 
@@ -261,6 +292,11 @@ func main() {
 		}
 		for i := 0; i < len(websites); i++ {
 			website := &websites[i]
+
+			if !website.Enabled {
+				continue
+			}
+
 			if !website.inProgress {
 				go runWebsiteChecks(website)
 			}

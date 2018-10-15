@@ -10,52 +10,39 @@ import (
 	"github.com/olivere/elastic"
 )
 
-type ServerCheck struct {
-	TestId     string        `json:"testId"`
-	ServerName string        `json:"serverName"`
-	CheckName  string        `json:"checkName"`
-	Server     *ServerConfig `json:"-"`
-	Check      *Check        `json:"-"`
-	Passed     bool          `json:"passed"`
-	Timestamp  time.Time     `json:"timestamp"`
+type WebsiteCheck struct {
+	TestId      string         `json:"testId"`
+	WebsiteName string         `json:"websiteName"`
+	Website     *WebsiteConfig `json:"-"`
+	Passed      bool           `json:"passed"`
+	Timestamp   time.Time      `json:"timestamp"`
 }
 
-func (result *ServerCheck) GetId() string {
+func (result *WebsiteCheck) GetId() string {
 	return fmt.Sprintf(
-		"server:%v:%v:%v",
-		strings.ToLower(strings.Replace(result.GetServerName(), " ", "-", -1)),
-		strings.ToLower(strings.Replace(result.GetCheckName(), " ", "-", -1)),
+		"website:%v:%v",
+		strings.ToLower(strings.Replace(result.GetWebsiteName(), " ", "-", -1)),
 		result.Timestamp,
 	)
 }
 
-func (result *ServerCheck) GetTestId() string {
+func (result *WebsiteCheck) GetTestId() string {
 	return fmt.Sprintf(
-		"server:%v:%v",
-		strings.ToLower(strings.Replace(result.GetServerName(), " ", "-", -1)),
-		strings.ToLower(strings.Replace(result.GetCheckName(), " ", "-", -1)),
+		"website:%v",
+		strings.ToLower(strings.Replace(result.GetWebsiteName(), " ", "-", -1)),
 	)
 }
 
-func (result *ServerCheck) GetServerName() string {
-	if result.Server == nil {
+func (result *WebsiteCheck) GetWebsiteName() string {
+	if result.Website == nil {
 		return "-"
 	}
 
-	return result.Server.Name
+	return result.Website.Name
 }
 
-func (result *ServerCheck) GetCheckName() string {
-	if result.Check == nil {
-		return "-"
-	}
-
-	return result.Check.Name
-}
-
-func (result *ServerCheck) GetMapping(setTimestamp bool) (*string, error) {
-	result.ServerName = result.GetServerName()
-	result.CheckName = result.GetCheckName()
+func (result *WebsiteCheck) GetMapping(setTimestamp bool) (*string, error) {
+	result.WebsiteName = result.GetWebsiteName()
 	result.TestId = result.GetTestId()
 	if setTimestamp {
 		result.Timestamp = time.Now()
@@ -72,15 +59,15 @@ func (result *ServerCheck) GetMapping(setTimestamp bool) (*string, error) {
 	return &mapping, nil
 }
 
-func (result *ServerCheck) Save() error {
+func (result *WebsiteCheck) Save() error {
 	bulkRequest := database.Bulk()
 	mapping, err := result.GetMapping(true)
 	if err != nil {
 		return err
 	}
 	req := elastic.NewBulkIndexRequest().
-		Index("server_check").
-		Type("server_check").
+		Index("website_check").
+		Type("website_check").
 		Id(result.GetId()).
 		Doc(mapping)
 	bulkRequest = bulkRequest.Add(req)
@@ -109,17 +96,17 @@ func (result *ServerCheck) Save() error {
 		}
 		// errorCount := len
 		indexCount := 0
-		// if count, ok := errored["server_check"]; ok {
+		// if count, ok := errored["website_check"]; ok {
 		// 	errorCount = count
 		// }
-		if count, ok := indexed["server_check"]; ok {
+		if count, ok := indexed["website_check"]; ok {
 			indexCount = count
 		}
-		Debug("Indexed ", indexCount, " ", "server_check")
+		Debug("Indexed ", indexCount, " ", "website_check")
 		// if errorCount > 0 {
-		// 	Error(errorCount, " ", "server_check", " errors")
+		// 	Error(errorCount, " ", "website_check", " errors")
 		// }
-		database.Flush().Index("server_check").Do(ctx)
+		database.Flush().Index("website_check").Do(ctx)
 
 		if len(indexErrors) > 0 {
 			return errors.New(fmt.Sprintf("There were problems indexing the result: %v", strings.Join(indexErrors, ", ")))
@@ -129,40 +116,47 @@ func (result *ServerCheck) Save() error {
 	return nil
 }
 
-func (checkResult *ServerCheck) GetSeverity() *SeverityConfig {
+func (checkResult *WebsiteCheck) GetSeverity() *SeverityConfig {
 	var severityConfig *SeverityConfig
-	if checkResult.Server != nil {
-		severityConfig = checkResult.Server.Severity()
-	}
-	if checkResult.Check != nil {
-		checkSeverityConfig := checkResult.Check.Severity()
-		if checkSeverityConfig != nil {
-			severityConfig = checkSeverityConfig
-		}
+	if checkResult.Website != nil {
+		severityConfig = checkResult.Website.Severity()
 	}
 
 	return severityConfig
 }
 
-func (checkResult *ServerCheck) GetSeverityName() string {
+func (checkResult *WebsiteCheck) GetSeverityName() string {
 	var severityName string
-	if checkResult.Server != nil {
-		severityName = checkResult.Server.SeverityType
-	}
-	if checkResult.Check != nil {
-		if checkResult.Check.Severity() != nil {
-			severityName = checkResult.Check.SeverityType
-		}
+	if checkResult.Website != nil {
+		severityName = checkResult.Website.SeverityType
 	}
 
 	return severityName
 }
 
-func (checkResult *ServerCheck) IsSevere() bool {
+func (checkResult *WebsiteCheck) CanResendAlert() bool {
+	severityConfig := checkResult.GetSeverity()
+
+	timeFrom := time.Now().Add(-severityConfig.AlertResendMinutes * time.Minute)
+	results, err := checkResult.GetAlertsSince(timeFrom)
+	if err != nil {
+		Error("Failed to get alerts matching `", checkResult.GetTestId(), "`: ", err)
+
+		return true
+	}
+
+	if len(*results) == 0 {
+		return true
+	}
+
+	return false
+}
+
+func (checkResult *WebsiteCheck) IsSevere() bool {
 	severityConfig := checkResult.GetSeverity()
 
 	if severityConfig == nil {
-		Error(fmt.Sprintf("No severity set for server `%v` or check `%v` - not sending alert", checkResult.GetServerName(), checkResult.GetCheckName()))
+		Error(fmt.Sprintf("No severity set for website `%v` - not sending alert", checkResult.GetWebsiteName()))
 
 		return false
 	}
@@ -196,45 +190,27 @@ func (checkResult *ServerCheck) IsSevere() bool {
 	return false
 }
 
-func (checkResult *ServerCheck) CanResendAlert() bool {
-	severityConfig := checkResult.GetSeverity()
-
-	timeFrom := time.Now().Add(-severityConfig.AlertResendMinutes * time.Minute)
-	results, err := checkResult.GetAlertsSince(timeFrom)
-	if err != nil {
-		Error("Failed to get alerts matching `", checkResult.GetTestId(), "`: ", err)
-
-		return true
-	}
-
-	if len(*results) == 0 {
-		return true
-	}
-
-	return false
-}
-
-func (result *ServerCheck) GetResultsSince(timeFrom time.Time) (*[]ServerCheck, error) {
+func (result *WebsiteCheck) GetResultsSince(timeFrom time.Time) (*[]WebsiteCheck, error) {
 	query := elastic.NewBoolQuery()
 	query.Must(elastic.NewMatchQuery("testId", result.GetTestId()).Operator("AND")).
 		Must(elastic.NewRangeQuery("timestamp").From(timeFrom.Add(-1 * time.Minute)).To(time.Now()))
 	search, err := database.Search().
-		Index("server_check").
+		Index("website_check").
 		Query(query).
 		Sort("timestamp", true).
 		From(0).Size(1000).
 		Do(ctx)
 
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Could not get server results: %v", err))
+		return nil, errors.New(fmt.Sprintf("Could not get website results: %v", err))
 	}
 
-	results := make([]ServerCheck, 0)
+	results := make([]WebsiteCheck, 0)
 	for _, record := range search.Hits.Hits {
-		var result ServerCheck
+		var result WebsiteCheck
 		err = json.Unmarshal(*record.Source, &result)
 		if err != nil {
-			Error("Could not deserialise server config json: ", err)
+			Error("Could not deserialise website config json: ", err)
 			continue
 		}
 
@@ -244,7 +220,7 @@ func (result *ServerCheck) GetResultsSince(timeFrom time.Time) (*[]ServerCheck, 
 	return &results, nil
 }
 
-func (result *ServerCheck) GetAlertsSince(timeFrom time.Time) (*[]Alert, error) {
+func (result *WebsiteCheck) GetAlertsSince(timeFrom time.Time) (*[]Alert, error) {
 	query := elastic.NewBoolQuery()
 	query.Must(elastic.NewMatchQuery("alertId", result.GetTestId()).Operator("AND")).
 		Must(elastic.NewRangeQuery("timestamp").From(timeFrom).To(time.Now()))

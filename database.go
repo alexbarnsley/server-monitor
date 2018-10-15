@@ -52,7 +52,6 @@ func __connect() {
 
 	var err error
 	elastic.SetSniff(false)
-	Info(fmt.Sprintf("http://%s:%d", host, port))
 	database, err = elastic.NewClient(
 		elastic.SetURL(fmt.Sprintf("http://%s:%d", host, port)),
 		elastic.SetBasicAuth(username, password),

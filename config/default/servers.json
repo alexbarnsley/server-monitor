@@ -5,6 +5,7 @@
     "port": 22,
     "username": "monitor",
     "password": "monitor",
+    "enabled": true,
     "severity": "HIGH",
     "groups": [
       "generic",

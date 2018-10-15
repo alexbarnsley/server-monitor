@@ -70,6 +70,7 @@ type ServerConfig struct {
 	Checks       []Check
 	Session      *sshSession
 	Alerts       map[string]bool
+	Enabled      bool
 	inProgress   bool
 }
 
@@ -83,6 +84,8 @@ type WebsiteConfig struct {
 	ResponseHeaders   map[string]string
 	RequestHeaders    map[string]string
 	RequestBody       string
+	Alerts            map[string]bool
+	Enabled           bool
 	inProgress        bool
 }
 
@@ -154,6 +157,35 @@ func init() {
 	httpClient.SetHTTPMode()
 }
 
+func connectToServers() {
+	for i := 0; i < len(servers); i++ {
+		server := &servers[i]
+		if !server.Enabled {
+			continue
+		}
+		session, err := sshConnect(server)
+		if err != nil {
+			Error("Failed to connect to '", server.Name, "': ", err.Error())
+		}
+		servers[i].Session = session
+	}
+}
+
+func disconnectAllServers() {
+	if len(servers) > 0 {
+		for i := 0; i < len(servers); i++ {
+			server := &servers[i]
+			if !server.Enabled {
+				continue
+			}
+			err := server.Session.client.Close()
+			if err != nil {
+				Error("Could not close SSH session for '", server.Name, "': ", err.Error())
+			}
+		}
+	}
+}
+
 func loadJson(configName string) []byte {
 	config := configFiles[configName]
 	path, pathError := config.getFilePath()
@@ -198,7 +230,6 @@ func loadGroupsConfig(configName string) error {
 }
 
 func loadWebsitesConfig(configName string) error {
-	// websites = make([]WebsiteConfig, 0)
 	err := json.Unmarshal(loadJson(configName), &websites)
 	if err != nil {
 		return err
@@ -300,6 +331,14 @@ func (config *configFile) getFilePath() (string, error) {
 
 func (server *ServerConfig) CanSendAlert(alert string, defaultValue bool) bool {
 	if val, ok := server.Alerts[alert]; ok {
+		return val
+	}
+
+	return defaultValue
+}
+
+func (website *WebsiteConfig) CanSendAlert(alert string, defaultValue bool) bool {
+	if val, ok := website.Alerts[alert]; ok {
 		return val
 	}
 
