@@ -162,7 +162,7 @@ func loadJson(configName string) []byte {
 	}
 	configJson, readError := ioutil.ReadFile(path)
 	if readError != nil {
-		Fatal("Could not load ", configName, " config: ", readError)
+		Fatal("Could not load ", path, " config: ", readError)
 	}
 
 	return configJson
