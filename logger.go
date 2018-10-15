@@ -12,6 +12,12 @@ func init() {
 	logrus.SetLevel(logrus.DebugLevel)
 }
 
+func InfoBold(message ...interface{}) {
+	message = append([]interface{}{"\x1b[1m"}, message...)
+	message = append(message, []interface{}{"\x1b[0m"}...)
+	logrus.Info(message...)
+}
+
 func Debug(message ...interface{}) {
 	logrus.Debug(message...)
 }

@@ -32,51 +32,76 @@ func disconnectAllServers() {
 	}
 }
 
-func CanSendAlert(server *ServerConfig, alert string, defaultValue bool) bool {
-	if val, ok := server.Alerts[alert]; ok {
-		return val
+func SendAlerts(serverResult *ServerCheck, subject string, message string) {
+	server := serverResult.Server
+	isSevere := serverResult != nil && serverResult.IsSevere()
+	if !isSevere || (isSevere && !serverResult.CanResendAlert()) {
+		return
 	}
-
-	return defaultValue
-}
-
-func SendAlerts(server *ServerConfig, subject string, message string) {
-	Error("Alert - ", message)
-	if config.Alerts.SimplePush.Enabled && CanSendAlert(server, "simplePush", config.Alerts.SimplePush.Default) {
-		// AlertSimplePush(subject, message)
+	Error(fmt.Sprintf("%v ALERT - %v", serverResult.GetSeverityName(), subject))
+	if config.Alerts.SimplePush.Enabled && server.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
+		AlertSimplePush(subject, message)
 	}
+	// if config.Alerts.SimplePush.Enabled {
+	// 	if server.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
+	// 		Error("Sending simple push")
+	// 		AlertSimplePush(subject, message)
+	// 	}
+	// }
 	// if config.Alerts.Email.Enabled && CanSendAlert(server, "email", config.Alerts.Email.Default) {
 	// 	AlertEmail(subject, message)
 	// }
 	// if config.Alerts.SMS.Enabled && CanSendAlert(server, "sms", config.Alerts.SMS.Default) {
 	// 	AlertSMS(subject, message)
 	// }
+
+	alert := &Alert{
+		AlertId: serverResult.GetTestId(),
+	}
+	err := alert.Save()
+	if err != nil {
+		Error("Could not save alert: ", err)
+	}
 }
 
 func runServerChecks(server *ServerConfig) {
 	server.inProgress = true
 
-	checks := server.Checks
+	checks := make(map[string]Check, 0)
+	// checks := server.Checks
 	for _, group := range groups {
 		for _, serverGroup := range server.Groups {
 			if group.Name == serverGroup {
-				checks = append(checks, group.Checks...)
+				for _, check := range group.Checks {
+					checks[check.Name] = check
+				}
+				// checks = append(checks, group.Checks...)
 			}
 		}
 	}
-	for j := 0; j < len(checks); j++ {
-		passed := true
-		check := checks[j]
+	for _, check := range server.Checks {
+		checks[check.Name] = check
+	}
+	for _, check := range checks {
 		response, err := server.Session.RunCommand(check.Command)
-		if err != nil {
-			go SendAlerts(server, fmt.Sprintf("Alert - %s (%s)", server.Name, check.Name), fmt.Sprintf("Failed to run check '%s': %s", check.Name, err.Error()))
-			passed = false
-			continue
+		var postCheck func()
+		checkResult := &ServerCheck{
+			Server: server,
+			Check:  &check,
+			Passed: true,
 		}
-		if check.ResponseContains != "" {
+		if err != nil {
+			checkResult.Passed = false
+			postCheck = func() {
+				go SendAlerts(checkResult, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("Failed to run check '%s': %s", check.Name, err.Error()))
+			}
+			continue
+		} else if check.ResponseContains != "" {
 			if !strings.Contains(response.String(), check.ResponseContains) {
-				go SendAlerts(server, fmt.Sprintf("Alert - %s (%s)", server.Name, check.Name), fmt.Sprintf("'%s' failed with response: %s", check.Name, response.String()))
-				passed = false
+				checkResult.Passed = false
+				postCheck = func() {
+					go SendAlerts(checkResult, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("'%s' failed with response: %s", check.Name, response.String()))
+				}
 				continue
 			}
 		} else if check.Regex != nil && check.Regex.Expression != "" {
@@ -91,18 +116,18 @@ func runServerChecks(server *ServerConfig) {
 					intVal, _ := strconv.Atoi(actualResult)
 					if check.Regex.GreaterThan != nil && intVal <= *check.Regex.GreaterThan {
 						errors = append(errors, fmt.Sprintf("'%v' is less than '%v': %v", check.Name, *check.Regex.GreaterThan, actualResult))
-						passed = false
+						checkResult.Passed = false
 					}
 					if check.Regex.LessThan != nil && intVal >= *check.Regex.LessThan {
 						errors = append(errors, fmt.Sprintf("'%v' is greater than '%v': %v", check.Name, *check.Regex.LessThan, actualResult))
-						passed = false
+						checkResult.Passed = false
 					}
 					if check.Regex.Equals != "" && resultEntry[*check.Regex.Index] != check.Regex.Equals {
 						errors = append(errors, fmt.Sprintf("'%v' does not equal '%v': %v", check.Name, check.Regex.Equals, actualResult))
-						passed = false
+						checkResult.Passed = false
 					}
 				}
-				if !passed {
+				if !checkResult.Passed {
 					uniqueErrors := make(map[string]bool, 0)
 					finalErrors := make([]string, 0)
 					for _, errorMessage := range errors {
@@ -111,12 +136,23 @@ func runServerChecks(server *ServerConfig) {
 							finalErrors = append(finalErrors, errorMessage)
 						}
 					}
-					SendAlerts(server, fmt.Sprintf("Alert - %s (%s)", server.Name, check.Name), strings.Join(finalErrors, ", "))
+					postCheck = func() {
+						go SendAlerts(checkResult, fmt.Sprintf("%s (%s)", server.Name, check.Name), strings.Join(finalErrors, ", "))
+					}
 				}
 			}
 		}
-		if passed {
+		if postCheck != nil {
+			postCheck()
+		}
+		if checkResult.Passed {
 			Info(server.Name, " - '", check.Name, "' check passed")
+		} else {
+			Error(server.Name, " - '", check.Name, "' check failed")
+		}
+		err = checkResult.Save()
+		if err != nil {
+			Error("Could not save result: ", err)
 		}
 	}
 
@@ -152,7 +188,6 @@ func runWebsiteChecks(website *WebsiteConfig) {
 		}
 		if website.MaxResponseTimeMS != 0 {
 			responseTimeMS := response.Time().Seconds() * 1000
-			Debug(responseTimeMS, website.MaxResponseTimeMS)
 			if responseTimeMS > website.MaxResponseTimeMS {
 				fail("Response time - expected below '%v' ms, took '%v' ms", website.MaxResponseTimeMS, responseTimeMS)
 			}
@@ -183,8 +218,10 @@ func runWebsiteChecks(website *WebsiteConfig) {
 }
 
 func main() {
+	CheckConfigChanges()
+	InitiateDatabase()
 	for {
-		if hasConfigChanges() {
+		if HasConfigChanges() {
 			for {
 				hasRunning := false
 				for i := 0; i < len(servers); i++ {
@@ -206,12 +243,15 @@ func main() {
 					break
 				}
 			}
-			checkConfigChanges()
+			CheckConfigChanges()
 		}
 		for i := 0; i < len(servers); i++ {
 			server := &servers[i]
 			if server.Session == nil {
-				SendAlerts(server, "Server not connected", "Server not connected, cannot run checks")
+				SendAlerts(&ServerCheck{
+					Server: server,
+					Passed: false,
+				}, "Server not connected", "Server not connected, cannot run checks")
 				continue
 			}
 

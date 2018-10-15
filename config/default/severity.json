@@ -1,0 +1,30 @@
+{
+  "CRITICAL": {
+    "checkMinutes": 2,
+    "failedAttemptsPercentage": 80,
+    "interventionPercentage": 50,
+    "alertResendMinutes": 5,
+    "alerts": {}
+  },
+  "HIGH": {
+    "checkMinutes": 5,
+    "failedAttemptsPercentage": 80,
+    "interventionPercentage": 50,
+    "alertResendMinutes": 10,
+    "alerts": {}
+  },
+  "MEDIUM": {
+    "checkMinutes": 30,
+    "failedAttemptsPercentage": 80,
+    "interventionPercentage": 50,
+    "alertResendMinutes": 30,
+    "alerts": {}
+  },
+  "LOW": {
+    "checkMinutes": 60,
+    "failedAttemptsPercentage": 80,
+    "interventionPercentage": 50,
+    "alertResendMinutes": 60,
+    "alerts": {}
+  }
+}

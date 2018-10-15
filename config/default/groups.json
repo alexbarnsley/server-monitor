@@ -25,6 +25,7 @@
     "checks": [
       {
         "name": "disk space",
+        "severity": "CRITICAL",
         "command": "IFS=$'\n'; for i in `df -h | egrep -v \"^Filesystem\"`; do echo $i; done",
         "regex": {
           "expression": "(?m)^([a-zA-Z0-9/.-]+)\\s+([0-9.]+\\w*\\s+){3}([0-9]+)\\%\\s+[/a-zA-Z]+$",

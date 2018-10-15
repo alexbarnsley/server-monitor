@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DIR=$(cd $(dirname "$0") && pwd)
+
+#docker pull docker.elastic.co/elasticsearch/elasticsearch:6.2.4
+#docker run -e ELASTIC_PASSWORD=MagicWord docker.elastic.co/elasticsearch/elasticsearch:6.2.4
+
+cd "$DIR/docker"
+docker-compose down
+if [[ "$1" == "0" ]]; then
+  docker-compose up
+else
+  docker-compose up -d
+fi
