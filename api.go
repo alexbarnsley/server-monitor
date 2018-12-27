@@ -15,14 +15,12 @@ var server = &http.Server{
 	ReadTimeout:  15 * time.Second,
 }
 
-func init(moduleConfig *ModuleConfig) {
+func StartApi() {
 	server.SetKeepAlivesEnabled(false)
 	server.Addr = fmt.Sprintf("%v:%v", "0.0.0.0", "8080")
 
 	router.HandleFunc("/status", Get_StatusHandler)
-}
 
-func main() {
 	logger.Fatal(server.ListenAndServe())
 }
 
