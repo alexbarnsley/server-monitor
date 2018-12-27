@@ -21,8 +21,16 @@ var indexes []index = []index{
 		mapping: mapping.ServerCheck,
 	},
 	{
+		name:    "website_check",
+		mapping: mapping.WebsiteCheck,
+	},
+	{
 		name:    "alert",
 		mapping: mapping.Alert,
+	},
+	{
+		name:    "intervention",
+		mapping: mapping.Intervention,
 	},
 }
 

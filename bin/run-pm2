@@ -1,0 +1,5 @@
+#!/bin/bash
+
+DIR=$(cd $(dirname "$0") && pwd)
+cd "$DIR/.."
+pm2 start "go run *.go "$1"" --name monitor

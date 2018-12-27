@@ -7,6 +7,7 @@
     "password": "monitor",
     "enabled": true,
     "severity": "HIGH",
+    "intervention": true,
     "groups": [
       "generic",
       "apache",

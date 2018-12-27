@@ -1,6 +1,6 @@
 {
   "CRITICAL": {
-    "checkMinutes": 2,
+    "checkMinutes": 1,
     "failedAttemptsPercentage": 80,
     "interventionPercentage": 50,
     "alertResendMinutes": 5,

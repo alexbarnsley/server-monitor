@@ -11,15 +11,6 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-type Check struct {
-	Name             string
-	SeverityType     string `json:"severity"`
-	Command          string
-	ResponseContains string
-	Regex            *Regex
-	Alert            string
-}
-
 type Regex struct {
 	Expression  string
 	Index       *int
@@ -49,14 +40,32 @@ type ElasticConfig struct {
 type MonitorConfig struct {
 	CheckInterval time.Duration
 	Alerts        AlertConfig
+	Intervention  bool
 	Elastic       ElasticConfig
 }
 
 type SeverityConfig struct {
 	CheckMinutes             time.Duration
 	FailedAttemptsPercentage int16
+	InterventionPercentage   int16
 	AlertResendMinutes       time.Duration
 	Alerts                   map[string]bool
+}
+
+type InterventionConfig struct {
+	Command        string
+	StopWhenSevere bool
+	// AlertIntervalMinutes time.Duration
+}
+
+type Check struct {
+	Name             string
+	SeverityType     string `json:"severity"`
+	Command          string
+	ResponseContains string
+	Regex            *Regex
+	Alert            string
+	Intervention     InterventionConfig
 }
 
 type ServerConfig struct {
@@ -66,6 +75,7 @@ type ServerConfig struct {
 	Username     string
 	Password     string
 	SeverityType string `json:"severity"`
+	Intervention bool
 	Groups       []string
 	Checks       []Check
 	Session      *sshSession
@@ -327,6 +337,48 @@ func (config *configFile) getFilePath() (string, error) {
 	}
 
 	return path, nil
+}
+
+func (server *ServerConfig) Intervene(checkResult *ServerCheck) error {
+	check := *checkResult.Check
+	if check.Intervention.Command == "" || (!config.Intervention && !server.Intervention) {
+		return nil
+	}
+
+	if check.Intervention.StopWhenSevere && checkResult.IsSevere() {
+		Error("StopWhenSevere & IsSevere")
+		return nil
+	}
+
+	// if check.Intervention.AlertIntervalMinutes != 0 {
+	// 	lastIntervention, _ := checkResult.GetLastIntervention()
+	// 	Error("AlertIntervalMinutes ", check.Intervention.AlertIntervalMinutes)
+	// 	if lastIntervention != nil {
+	// 		Error("lastIntervention.Timestamp ", lastIntervention.Timestamp)
+	// 		Error("time.Now().Add(-check.Intervention.AlertIntervalMinutes*time.Minute) ", time.Now().Add(-check.Intervention.AlertIntervalMinutes*time.Minute))
+	// 	}
+	// 	if lastIntervention != nil && lastIntervention.Timestamp.After(time.Now().Add(-check.Intervention.AlertIntervalMinutes*time.Minute)) {
+	// 		return nil
+	// 	}
+	// }
+
+	severityConfig := checkResult.GetSeverity()
+	failurePercentage, err := checkResult.GetFailurePercentage()
+	if err != nil {
+		return err
+	}
+	Error("failurePercentage ", failurePercentage)
+	Error("InterventionPercentage ", severityConfig.InterventionPercentage)
+	if failurePercentage > float32(severityConfig.InterventionPercentage) {
+		Info(fmt.Sprintf("Intervention sent for `%v` (%v)", checkResult.GetServerName(), check.Name))
+		intervention := &Intervention{
+			TestId: checkResult.GetTestId(),
+		}
+		intervention.Save()
+		server.Session.RunCommand(check.Intervention.Command)
+	}
+
+	return nil
 }
 
 func (server *ServerConfig) CanSendAlert(alert string, defaultValue bool) bool {

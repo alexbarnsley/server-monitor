@@ -7,6 +7,7 @@
       "default": true
     }
   },
+  "intervention": true,
   "elastic": {
     "host": "127.0.0.1",
     "port": 9200,

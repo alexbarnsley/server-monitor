@@ -10,25 +10,25 @@ import (
 	"github.com/olivere/elastic"
 )
 
-type Alert struct {
-	AlertId   string    `json:"alertId"`
+type Intervention struct {
+	TestId    string    `json:"testId"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
-func (alert *Alert) GetId() string {
+func (intervention *Intervention) GetId() string {
 	return fmt.Sprintf(
 		"%v:%v",
-		alert.AlertId,
-		alert.Timestamp,
+		intervention.TestId,
+		intervention.Timestamp,
 	)
 }
 
-func (alert *Alert) GetMapping(setTimestamp bool) (*string, error) {
+func (intervention *Intervention) GetMapping(setTimestamp bool) (*string, error) {
 	if setTimestamp {
-		alert.Timestamp = time.Now()
+		intervention.Timestamp = time.Now()
 	}
 
-	bytes, err := json.Marshal(alert)
+	bytes, err := json.Marshal(intervention)
 	if err != nil {
 		return nil, err
 	}
@@ -38,22 +38,21 @@ func (alert *Alert) GetMapping(setTimestamp bool) (*string, error) {
 	return &mapping, nil
 }
 
-func (alert *Alert) Save() error {
+func (intervention *Intervention) Save() error {
 	bulkRequest := database.Bulk()
-	mapping, err := alert.GetMapping(true)
+	mapping, err := intervention.GetMapping(true)
 	if err != nil {
 		return err
 	}
 	req := elastic.NewBulkIndexRequest().
-		Index("alert").
-		Type("alert").
-		Id(alert.GetId()).
+		Index("intervention").
+		Type("intervention").
+		Id(intervention.GetId()).
 		Doc(mapping)
 	bulkRequest = bulkRequest.Add(req)
 	response, err := bulkRequest.Do(ctx)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Could not process mappings to elastic: %v", err))
-		// Error(bulkRequest)
+		return errors.New(fmt.Sprintf("Could not process intervention mappings to elastic: %v", err))
 	} else {
 		indexed := make(map[string]int)
 		indexErrors := make([]string, 0)
@@ -68,27 +67,18 @@ func (alert *Alert) Save() error {
 			if item.Error == nil {
 				indexed[item.Index]++
 			} else {
-				// errored[item.Index]++
 				indexErrors = append(indexErrors, "`"+item.Index+"` ", item.Id, ": ", item.Error.Reason)
-				// Error("Error for `"+item.Index+"` ", item.Id, ": ", item.Error.Reason)
 			}
 		}
-		// errorCount := len
 		indexCount := 0
-		// if count, ok := errored["alert"]; ok {
-		// 	errorCount = count
-		// }
-		if count, ok := indexed["alert"]; ok {
+		if count, ok := indexed["intervention"]; ok {
 			indexCount = count
 		}
-		Debug("Indexed ", indexCount, " ", "alert")
-		// if errorCount > 0 {
-		// 	Error(errorCount, " ", "alert", " errors")
-		// }
-		database.Flush().Index("alert").Do(ctx)
+		Debug("Indexed ", indexCount, " ", "intervention")
+		database.Flush().Index("intervention").Do(ctx)
 
 		if len(indexErrors) > 0 {
-			return errors.New(fmt.Sprintf("There were problems indexing the alert: %v", strings.Join(indexErrors, ", ")))
+			return errors.New(fmt.Sprintf("There were problems indexing the intervention: %v", strings.Join(indexErrors, ", ")))
 		}
 	}
 

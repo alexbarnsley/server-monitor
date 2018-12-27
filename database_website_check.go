@@ -49,7 +49,6 @@ func (result *WebsiteCheck) GetMapping(setTimestamp bool) (*string, error) {
 	}
 
 	bytes, err := json.Marshal(result)
-
 	if err != nil {
 		return nil, err
 	}

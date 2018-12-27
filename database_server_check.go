@@ -62,7 +62,6 @@ func (result *ServerCheck) GetMapping(setTimestamp bool) (*string, error) {
 	}
 
 	bytes, err := json.Marshal(result)
-
 	if err != nil {
 		return nil, err
 	}
@@ -158,21 +157,16 @@ func (checkResult *ServerCheck) GetSeverityName() string {
 	return severityName
 }
 
-func (checkResult *ServerCheck) IsSevere() bool {
+func (checkResult *ServerCheck) GetFailurePercentage() (float32, error) {
 	severityConfig := checkResult.GetSeverity()
-
 	if severityConfig == nil {
-		Error(fmt.Sprintf("No severity set for server `%v` or check `%v` - not sending alert", checkResult.GetServerName(), checkResult.GetCheckName()))
-
-		return false
+		return 0, errors.New(fmt.Sprintf("No severity set for server `%v` or check `%v` - not sending alert", checkResult.GetServerName(), checkResult.GetCheckName()))
 	}
 
 	timeFrom := time.Now().Add(-severityConfig.CheckMinutes * time.Minute)
 	results, err := checkResult.GetResultsSince(timeFrom)
 	if err != nil {
-		Error("Failed to get results matching `", checkResult.GetTestId(), "`: ", err)
-
-		return true
+		return 0, errors.New(fmt.Sprintf("Failed to get results matching `", checkResult.GetTestId(), "`: ", err))
 	}
 
 	hasOlder := false
@@ -189,7 +183,33 @@ func (checkResult *ServerCheck) IsSevere() bool {
 		}
 	}
 
-	if hasOlder && (failureCount/totalCount)*100 > float32(severityConfig.FailedAttemptsPercentage) {
+	Error("failureCount ", failureCount)
+	Error("totalCount ", totalCount)
+	Error("(failureCount / totalCount) * 100 ", (failureCount/totalCount)*100)
+	// Error("severityConfig.CheckMinutes.Nanoseconds()", severityConfig.CheckMinutes.Nanoseconds())
+	// Error("severityConfig.CheckMinutes.Seconds()", severityConfig.CheckMinutes.Seconds())
+	// Error("severityConfig.CheckMinutes.Minutes()", severityConfig.CheckMinutes.Minutes())
+	// Error("severityConfig.CheckMinutes * time.Minute", severityConfig.CheckMinutes*time.Minute)
+	if !hasOlder {
+		totalCount = float32(severityConfig.CheckMinutes.Nanoseconds()) / (float32(config.CheckInterval.Nanoseconds()) / 60)
+		Error("totalCount ", totalCount)
+		Error("(failureCount / totalCount) * 100 ", (failureCount/totalCount)*100)
+	}
+
+	return (failureCount / totalCount) * 100, nil
+	// return 0, nil
+}
+
+func (checkResult *ServerCheck) IsSevere() bool {
+	severityConfig := checkResult.GetSeverity()
+	failurePercentage, err := checkResult.GetFailurePercentage()
+	if err != nil {
+		Error(err)
+
+		return false
+	}
+
+	if failurePercentage > float32(severityConfig.FailedAttemptsPercentage) {
 		return true
 	}
 
@@ -272,4 +292,36 @@ func (result *ServerCheck) GetAlertsSince(timeFrom time.Time) (*[]Alert, error) 
 	}
 
 	return &results, nil
+}
+
+func (result *ServerCheck) GetLastIntervention() (*Intervention, error) {
+	search, err := database.Search().
+		Index("intervention").
+		Query(elastic.NewMatchQuery("testId", result.GetTestId())).
+		Sort("timestamp", false).
+		From(0).Size(1).
+		Do(ctx)
+
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Could not get last intervention: %v", err))
+	}
+
+	var interventionResult Intervention
+	hasIntervention := false
+	for _, record := range search.Hits.Hits {
+		err = json.Unmarshal(*record.Source, &interventionResult)
+		if err != nil {
+			Error("Could not deserialise intervention json: ", err)
+			continue
+		}
+
+		hasIntervention = true
+		break
+	}
+
+	if hasIntervention {
+		return &interventionResult, nil
+	}
+
+	return nil, nil
 }

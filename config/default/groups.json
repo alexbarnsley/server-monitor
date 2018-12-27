@@ -16,7 +16,11 @@
         "name": "mysql process running",
         "command": "ps uxa | egrep \"^mysql\"",
         "responseContains": "/usr/sbin/mysqld",
-        "alerts": {}
+        "alerts": {},
+        "intervention": {
+          "command": "sudo /etc/init.d/mysqla restart",
+          "stopWhenSevere": true
+        }
       }
     ]
   },
