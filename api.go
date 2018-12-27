@@ -41,7 +41,11 @@ func Get_StatusHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		results, err := server.GetResultsSince(timeFrom)
+		serverCheck := &ServerCheck{
+			Server: server,
+		}
+
+		results, err := serverCheck.GetResultsForServerSince(timeFrom)
 		if err != nil {
 			failingServers++
 			continue

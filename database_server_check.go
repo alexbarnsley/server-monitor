@@ -264,6 +264,35 @@ func (result *ServerCheck) GetResultsSince(timeFrom time.Time) (*[]ServerCheck, 
 	return &results, nil
 }
 
+func (result *ServerCheck) GetResultsForServerSince(timeFrom time.Time) (*[]ServerCheck, error) {
+	query := elastic.NewBoolQuery()
+	query.Must(elastic.NewRangeQuery("timestamp").From(timeFrom.Add(-1 * time.Minute)).To(time.Now()))
+	search, err := database.Search().
+		Index("server_check").
+		Query(query).
+		Sort("timestamp", true).
+		From(0).Size(1000).
+		Do(ctx)
+
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Could not get server results: %v", err))
+	}
+
+	results := make([]ServerCheck, 0)
+	for _, record := range search.Hits.Hits {
+		var result ServerCheck
+		err = json.Unmarshal(*record.Source, &result)
+		if err != nil {
+			Error("Could not deserialise server config json: ", err)
+			continue
+		}
+
+		results = append(results, result)
+	}
+
+	return &results, nil
+}
+
 func (result *ServerCheck) GetAlertsSince(timeFrom time.Time) (*[]Alert, error) {
 	query := elastic.NewBoolQuery()
 	query.Must(elastic.NewMatchQuery("alertId", result.GetTestId()).Operator("AND")).
