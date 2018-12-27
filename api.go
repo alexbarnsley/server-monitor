@@ -27,8 +27,8 @@ func StartApi() {
 }
 
 type StatusHandlerResponse struct {
-	Running bool
-	Failing int
+	Running bool `json:"running"`
+	Failing int  `json:"failing"`
 }
 
 func Get_StatusHandler(w http.ResponseWriter, r *http.Request) {

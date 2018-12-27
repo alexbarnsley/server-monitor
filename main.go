@@ -177,7 +177,7 @@ func runWebsiteChecks(website *WebsiteConfig) {
 func main() {
 	CheckConfigChanges()
 	InitiateDatabase()
-	StartApi()
+	go StartApi()
 	for {
 		if HasConfigChanges() {
 			for {
