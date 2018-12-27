@@ -55,7 +55,7 @@ func Get_StatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statusCode := 200
-	if testedServers > 0 {
+	if testedServers == 0 {
 		statusCode = 500
 	}
 	response := &StatusHandlerResponse{
