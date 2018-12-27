@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -21,24 +23,25 @@ func StartApi() {
 
 	router.HandleFunc("/status", Get_StatusHandler)
 
-	logger.Fatal(server.ListenAndServe())
+	Fatal(server.ListenAndServe())
 }
 
 type StatusHandlerResponse struct {
 	Running bool
-	Failing int32
+	Failing int
 }
 
 func Get_StatusHandler(w http.ResponseWriter, r *http.Request) {
 	testedServers := 0
 	failingServers := 0
+	timeFrom := time.Now().Add(-5 * time.Minute)
 	for i := 0; i < len(servers); i++ {
 		server := &servers[i]
 		if !server.Enabled {
 			continue
 		}
 
-		results, err := checkResult.GetResultsSince(timeFrom)
+		results, err := server.GetResultsSince(timeFrom)
 		if err != nil {
 			failingServers++
 			continue
@@ -67,11 +70,11 @@ func __sendResponse(w http.ResponseWriter, r *http.Request, statusCode int, resp
 			"success": false,
 		})
 		if jsonErr != nil {
-			logger.Error("API ", r.URL.String(), " - ", jsonErr)
+			Error("API ", r.URL.String(), " - ", jsonErr)
 		}
 	}
 	if err != nil {
-		logger.Error("API ", r.URL.String(), " - ", *err)
+		Error("API ", r.URL.String(), " - ", *err)
 	}
 
 	w.WriteHeader(statusCode)
