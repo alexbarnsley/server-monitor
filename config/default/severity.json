@@ -1,13 +1,13 @@
 {
   "CRITICAL": {
-    "checkMinutes": 1,
+    "checkMinutes": 5,
     "failedAttemptsPercentage": 80,
     "interventionPercentage": 50,
     "alertResendMinutes": 5,
     "alerts": {}
   },
   "HIGH": {
-    "checkMinutes": 5,
+    "checkMinutes": 10,
     "failedAttemptsPercentage": 80,
     "interventionPercentage": 50,
     "alertResendMinutes": 10,
