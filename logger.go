@@ -1,14 +1,26 @@
 package main
 
 import (
+	"bytes"
 	"os"
 
 	"github.com/sirupsen/logrus"
 )
 
+type OutputSplitter struct{}
+
+var textFormatter = &logrus.TextFormatter{}
+
+func (splitter *OutputSplitter) Write(p []byte) (n int, err error) {
+	if bytes.Contains(p, []byte("[31mERRO")) {
+		return os.Stderr.Write(p)
+	}
+	return os.Stdout.Write(p)
+}
+
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{})
-	logrus.SetOutput(os.Stdout)
+	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+	logrus.SetOutput(&OutputSplitter{})
 	logrus.SetLevel(logrus.DebugLevel)
 }
 
