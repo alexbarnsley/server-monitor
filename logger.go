@@ -19,7 +19,11 @@ func (splitter *OutputSplitter) Write(p []byte) (n int, err error) {
 }
 
 func init() {
-	logrus.SetFormatter(&logrus.TextFormatter{ForceColors: true})
+	logrus.SetFormatter(&logrus.TextFormatter{
+		ForceColors:     true,
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
 	logrus.SetOutput(&OutputSplitter{})
 	logrus.SetLevel(logrus.DebugLevel)
 }
