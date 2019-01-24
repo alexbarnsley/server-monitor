@@ -202,6 +202,11 @@ func (checkResult *ServerCheck) GetFailurePercentage() (float32, error) {
 
 func (checkResult *ServerCheck) IsSevere() bool {
 	severityConfig := checkResult.GetSeverity()
+	percentage := severityConfig.FailedAttemptsPercentage
+	if !checkResult.Server.CanIntervene(checkResult.Check) {
+		percentage = severityConfig.InterventionPercentage
+	}
+
 	failurePercentage, err := checkResult.GetFailurePercentage()
 	if err != nil {
 		Error(err)
@@ -209,7 +214,7 @@ func (checkResult *ServerCheck) IsSevere() bool {
 		return false
 	}
 
-	if failurePercentage > float32(severityConfig.FailedAttemptsPercentage) {
+	if failurePercentage > float32(percentage) {
 		return true
 	}
 

@@ -339,9 +339,18 @@ func (config *configFile) getFilePath() (string, error) {
 	return path, nil
 }
 
+func (server *ServerConfig) CanIntervene(check *Check) bool {
+	if check.Intervention.Command == "" || (!config.Intervention && !server.Intervention) {
+		return false
+	}
+
+	return true
+}
+
 func (server *ServerConfig) Intervene(checkResult *ServerCheck) error {
 	check := *checkResult.Check
-	if check.Intervention.Command == "" || (!config.Intervention && !server.Intervention) {
+
+	if server.CanIntervene(&check) {
 		return nil
 	}
 

@@ -94,7 +94,9 @@ func runServerChecks(server *ServerConfig) {
 		if checkResult.Passed {
 			Info(server.Name, " - '", check.Name, "' check passed")
 		} else {
-			go server.Intervene(checkResult)
+			if server.CanIntervene(checkResult.Check) {
+				go server.Intervene(checkResult)
+			}
 			Error(server.Name, " - '", check.Name, "' check failed")
 		}
 		err = checkResult.Save()
