@@ -1,8 +1,8 @@
 {
   "CRITICAL": {
     "checkMinutes": 5,
-    "failedAttemptsPercentage": 80,
-    "interventionPercentage": 50,
+    "failedAttemptsPercentage": 50,
+    "interventionPercentage": 30,
     "alertResendMinutes": 5,
     "alerts": {}
   },
