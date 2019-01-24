@@ -183,17 +183,8 @@ func (checkResult *ServerCheck) GetFailurePercentage() (float32, error) {
 		}
 	}
 
-	Error("failureCount ", failureCount)
-	Error("totalCount ", totalCount)
-	Error("(failureCount / totalCount) * 100 ", (failureCount/totalCount)*100)
-	// Error("severityConfig.CheckMinutes.Nanoseconds()", severityConfig.CheckMinutes.Nanoseconds())
-	// Error("severityConfig.CheckMinutes.Seconds()", severityConfig.CheckMinutes.Seconds())
-	// Error("severityConfig.CheckMinutes.Minutes()", severityConfig.CheckMinutes.Minutes())
-	// Error("severityConfig.CheckMinutes * time.Minute", severityConfig.CheckMinutes*time.Minute)
 	if !hasOlder {
 		totalCount = float32(severityConfig.CheckMinutes.Nanoseconds()) / (float32(config.CheckInterval.Nanoseconds()) / 60)
-		Error("totalCount ", totalCount)
-		Error("(failureCount / totalCount) * 100 ", (failureCount/totalCount)*100)
 	}
 
 	return (failureCount / totalCount) * 100, nil
