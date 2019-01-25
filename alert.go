@@ -19,6 +19,7 @@ func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject 
 	isSevere := false
 	canSend := map[string]bool{
 		"simplePush": false,
+		"pushBullet": false,
 	}
 	if serverResult != nil && server != nil {
 		isSevere = serverResult != nil && serverResult.IsSevere()
@@ -27,6 +28,9 @@ func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject 
 		}
 		if server.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
 			canSend["simplePush"] = true
+		}
+		if server.CanSendAlert("pushBullet", config.Alerts.PushBullet.Default) {
+			canSend["pushBullet"] = true
 		}
 		severityName = serverResult.GetSeverityName()
 	}
@@ -37,6 +41,9 @@ func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject 
 		}
 		if website.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
 			canSend["simplePush"] = true
+		}
+		if server.CanSendAlert("pushBullet", config.Alerts.PushBullet.Default) {
+			canSend["pushBullet"] = true
 		}
 		severityName = websiteResult.GetSeverityName()
 	}
