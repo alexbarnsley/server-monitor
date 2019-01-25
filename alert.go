@@ -94,8 +94,8 @@ func AlertSimplePush(subject string, message string) {
 		fmt.Sprintf(
 			"https://api.simplepush.io/send/%s/%s/%s",
 			config.Alerts.SimplePush.Code,
-			url.QueryEscape(subject),
-			url.QueryEscape(message),
+			url.PathEscape(subject),
+			url.PathEscape(message),
 		),
 	)
 	if err != nil {
