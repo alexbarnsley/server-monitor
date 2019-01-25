@@ -43,7 +43,7 @@ func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject 
 		if website.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
 			canSend["simplePush"] = true
 		}
-		if server.CanSendAlert("pushBullet", config.Alerts.PushBullet.Default) {
+		if website.CanSendAlert("pushBullet", config.Alerts.PushBullet.Default) {
 			canSend["pushBullet"] = true
 		}
 		severityName = websiteResult.GetSeverityName()
