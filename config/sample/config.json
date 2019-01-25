@@ -5,6 +5,12 @@
       "code": "123456",
       "enabled": true,
       "default": true
+    },
+    "pushBullet": {
+      "accessToken": "123456",
+      "email": "my@email.com",
+      "enabled": true,
+      "default": true
     }
   },
   "intervention": true,

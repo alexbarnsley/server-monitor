@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	// "github.com/davecgh/go-spew/spew"
 )
@@ -47,6 +48,9 @@ func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject 
 	if config.Alerts.SimplePush.Enabled && canSend["simplePush"] {
 		AlertSimplePush(subject, message)
 	}
+	if config.Alerts.PushBullet.Enabled && canSend["pushBullet"] {
+		AlertPushBullet(subject, message)
+	}
 	// if config.Alerts.SimplePush.Enabled {
 	// 	if server.CanSendAlert("simplePush", config.Alerts.SimplePush.Default) {
 	// 		Error("Sending simple push")
@@ -81,6 +85,33 @@ func AlertSimplePush(subject string, message string) {
 	_, err := httpClient.R().Get(fmt.Sprintf("https://api.simplepush.io/send/%s/%s/%s", config.Alerts.SimplePush.Code, subject, message))
 	if err != nil {
 		Error("Could not send SimplePush alert: ", err)
+	}
+	// spew.Dump(response)
+}
+
+func AlertPushBullet(subject string, message string) {
+	body := map[string]string{
+		"type":  "note",
+		"title": subject,
+		"body":  message,
+		"email": config.Alerts.PushBullet.Email,
+	}
+	jsonBody, jsonErr := json.Marshal(body)
+
+	if jsonErr != nil {
+		Error("Could not send PushBullet alert: ", jsonErr)
+
+		return
+	}
+
+	_, err := httpClient.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Access-Token", config.Alerts.PushBullet.AccessToken).
+		SetBody(jsonBody).
+		Post("https://api.pushbullet.com/v2/pushes")
+
+	if err != nil {
+		Error("Could not send PushBullet alert: ", err)
 	}
 	// spew.Dump(response)
 }

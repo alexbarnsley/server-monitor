@@ -26,8 +26,16 @@ type SimplePushAlert struct {
 	Default bool
 }
 
+type PushBulletAlert struct {
+	AccessToken string
+	Email       string
+	Enabled     bool
+	Default     bool
+}
+
 type AlertConfig struct {
 	SimplePush SimplePushAlert
+	PushBullet PushBulletAlert
 }
 
 type ElasticConfig struct {
