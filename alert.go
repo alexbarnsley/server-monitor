@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	// "github.com/davecgh/go-spew/spew"
 )
 
@@ -89,7 +90,14 @@ func SendAlerts(serverResult *ServerCheck, websiteResult *WebsiteCheck, subject 
 }
 
 func AlertSimplePush(subject string, message string) {
-	_, err := httpClient.R().Get(fmt.Sprintf("https://api.simplepush.io/send/%s/%s/%s", config.Alerts.SimplePush.Code, subject, message))
+	_, err := httpClient.R().Get(
+		fmt.Sprintf(
+			"https://api.simplepush.io/send/%s/%s/%s",
+			config.Alerts.SimplePush.Code,
+			url.QueryEscape(subject),
+			url.QueryEscape(message),
+		),
+	)
 	if err != nil {
 		Error("Could not send SimplePush alert: ", err)
 	}
