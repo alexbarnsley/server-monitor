@@ -61,7 +61,7 @@ func (serverSession *sshSession) RunCommand(command string, retry bool) (*bytes.
 			sshReconnect(serverSession.server)
 			retryBytes, retryErr := serverSession.RunCommand(command, false)
 
-			return &retryBytes, retryErr
+			return retryBytes, retryErr
 		}
 
 		return nil, errors.New("Could not start session for " + serverSession.server.Host + ": " + err.Error())
