@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -16,11 +17,12 @@ type sshSession struct {
 func sshConnect(server *ServerConfig) (*sshSession, error) {
 	hostKey := ssh.InsecureIgnoreHostKey()
 	config := &ssh.ClientConfig{
-		User: server.Username,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(server.Password),
 		},
+		User:            server.Username,
 		HostKeyCallback: hostKey,
+		Timeout:         10 * time.Second,
 	}
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", server.Host, server.Port), config)
 	if err != nil {
