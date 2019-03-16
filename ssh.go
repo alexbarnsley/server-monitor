@@ -38,8 +38,6 @@ func sshReconnect(server *ServerConfig) bool {
 		err := server.Session.client.Close()
 		if err != nil {
 			Error("Could not close SSH session for '", server.Name, "': ", err.Error())
-
-			return false
 		}
 	}
 
