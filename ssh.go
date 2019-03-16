@@ -33,9 +33,37 @@ func sshConnect(server *ServerConfig) (*sshSession, error) {
 	}, nil
 }
 
-func (serverSession *sshSession) RunCommand(command string) (*bytes.Buffer, error) {
+func sshReconnect(server *ServerConfig) bool {
+	if server.Session != nil && server.Session.client != nil {
+		err := server.Session.client.Close()
+		if err != nil {
+			Error("Could not close SSH session for '", server.Name, "': ", err.Error())
+
+			return false
+		}
+	}
+
+	session, err := sshConnect(server)
+	if err != nil {
+		Error("Failed to connect to '", server.Name, "': ", err.Error())
+
+		return false
+	}
+	server.Session = session
+
+	return true
+}
+
+func (serverSession *sshSession) RunCommand(command string, retry bool) (*bytes.Buffer, error) {
 	session, err := serverSession.client.NewSession()
 	if err != nil {
+		if err.Error() == "EOF" && retry {
+			sshReconnect(serverSession.server)
+			retryBytes, retryErr := serverSession.RunCommand(command, false)
+
+			return &retryBytes, retryErr
+		}
+
 		return nil, errors.New("Could not start session for " + serverSession.server.Host + ": " + err.Error())
 	}
 
