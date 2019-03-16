@@ -157,18 +157,14 @@ func init() {
 			loadDefault:    true,
 		},
 		"groups": {
-			path:           "groups.json",
-			loadMethod:     loadGroupsConfig,
-			preLoadMethod:  disconnectAllServers,
-			postLoadMethod: connectToServers,
-			loadDefault:    true,
+			path:        "groups.json",
+			loadMethod:  loadGroupsConfig,
+			loadDefault: true,
 		},
 		"websites": {
-			path:           "websites.json",
-			loadMethod:     loadWebsitesConfig,
-			preLoadMethod:  disconnectAllServers,
-			postLoadMethod: connectToServers,
-			loadDefault:    true,
+			path:        "websites.json",
+			loadMethod:  loadWebsitesConfig,
+			loadDefault: true,
 		},
 	}
 
