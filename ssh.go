@@ -48,8 +48,9 @@ func sshReconnect(server *ServerConfig) bool {
 		Error("Failed to connect to '", server.Name, "': ", err.Error())
 
 		return false
+	} else {
+		server.Session = session
 	}
-	server.Session = session
 
 	return true
 }
