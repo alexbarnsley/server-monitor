@@ -212,11 +212,14 @@ func main() {
 			}
 
 			if server.Session == nil {
-				SendAlerts(&ServerCheck{
-					Server: server,
-					Passed: false,
-				}, nil, "Server not connected", "Server not connected, cannot run checks")
-				continue
+				if !sshReconnect(server) {
+					SendAlerts(&ServerCheck{
+						Server: server,
+						Passed: false,
+					}, nil, "Server not connected", "Server not connected, cannot run checks")
+
+					continue
+				}
 			}
 
 			if !server.inProgress {
