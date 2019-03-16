@@ -29,7 +29,7 @@ func runServerChecks(server *ServerConfig) {
 		checks[check.Name] = check
 	}
 	for _, check := range checks {
-		response, err := server.Session.RunCommand(check.Command)
+		response, err := server.Session.RunCommand(check.Command, true)
 		var postCheck func()
 		checkResult := &ServerCheck{
 			Server: server,

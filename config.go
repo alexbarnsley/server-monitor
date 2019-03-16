@@ -388,7 +388,7 @@ func (server *ServerConfig) Intervene(checkResult *ServerCheck) error {
 			TestId: checkResult.GetTestId(),
 		}
 		intervention.Save()
-		server.Session.RunCommand(check.Intervention.Command)
+		server.Session.RunCommand(check.Intervention.Command, true)
 	}
 
 	return nil
