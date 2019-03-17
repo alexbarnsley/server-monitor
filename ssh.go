@@ -56,6 +56,9 @@ func sshReconnect(server *ServerConfig) bool {
 }
 
 func (serverSession *sshSession) RunCommand(command string, retry bool) (*bytes.Buffer, error) {
+	if serverSession == nil || serverSession.client == nil {
+		return nil, errors.New("SSH not connected")
+	}
 	session, err := serverSession.client.NewSession()
 	if err != nil {
 		if err.Error() == "EOF" && retry {
