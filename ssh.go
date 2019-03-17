@@ -61,7 +61,7 @@ func (serverSession *sshSession) RunCommand(command string, retry bool) (*bytes.
 	}
 	session, err := serverSession.client.NewSession()
 	if err != nil {
-		if err.Error() == "EOF" && retry {
+		if retry {
 			sshReconnect(serverSession.server)
 			retryBytes, retryErr := serverSession.RunCommand(command, false)
 
