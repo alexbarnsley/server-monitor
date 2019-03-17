@@ -22,7 +22,7 @@ func sshConnect(server *ServerConfig) (*sshSession, error) {
 		},
 		User:            server.Username,
 		HostKeyCallback: hostKey,
-		Timeout:         10 * time.Second,
+		Timeout:         time.Duration(3) * time.Second,
 	}
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", server.Host, server.Port), config)
 	if err != nil {
