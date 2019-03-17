@@ -1,4 +1,11 @@
 {
+  "NUCLEAR": {
+    "checkMinutes": 1,
+    "failedAttemptsPercentage": 50,
+    "interventionPercentage": 30,
+    "alertResendMinutes": 2,
+    "alerts": {}
+  },
   "CRITICAL": {
     "checkMinutes": 5,
     "failedAttemptsPercentage": 50,
