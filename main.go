@@ -218,7 +218,6 @@ func main() {
 						Passed: false,
 					}, nil, "Server not connected", "Server not connected, cannot run checks")
 
-					continue
 				}
 			}
 
