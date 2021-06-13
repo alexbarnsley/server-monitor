@@ -41,7 +41,7 @@ func runServerChecks(server *ServerConfig) {
 			postCheck = func() {
 				go SendAlerts(checkResult, nil, fmt.Sprintf("%s (%s)", server.Name, check.Name), fmt.Sprintf("Failed to run check '%s': %s", check.Name, err.Error()))
 			}
-			// Error("1 ", err)
+			Error("1 ", err)
 		} else if check.ResponseContains != "" {
 			if !strings.Contains(response.String(), check.ResponseContains) {
 				checkResult.Passed = false
